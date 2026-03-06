@@ -1,0 +1,58 @@
+{
+  "entities": {
+    "File": {
+      "title": "File",
+      "description": "A legal document or evidence file indexed from Google Drive.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "description": "Name of the file" },
+        "mimeType": { "type": "string", "description": "MIME type of the file" },
+        "webViewLink": { "type": "string", "description": "Link to view the file in Google Drive" },
+        "thumbnailLink": { "type": "string", "description": "Link to the file thumbnail" },
+        "processed": { "type": "boolean", "description": "Whether the file has been processed by AI" },
+        "summary": { "type": "string", "description": "AI-generated summary of the file content" },
+        "ownerId": { "type": "string", "description": "UID of the user who owns this file" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Timestamp when the file was indexed" }
+      },
+      "required": ["name", "mimeType", "ownerId", "createdAt"]
+    },
+    "Entity": {
+      "title": "Entity",
+      "description": "A person, organization, or location extracted from a file.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "description": "Name of the entity" },
+        "type": { "type": "string", "enum": ["PERSON", "ORGANIZATION", "LOCATION"], "description": "Type of the entity" },
+        "fileId": { "type": "string", "description": "ID of the file where this entity was found" },
+        "ownerId": { "type": "string", "description": "UID of the user who owns this entity" }
+      },
+      "required": ["name", "type", "fileId", "ownerId"]
+    },
+    "Event": {
+      "title": "Event",
+      "description": "A chronological event extracted from a file.",
+      "type": "object",
+      "properties": {
+        "date": { "type": "string", "format": "date", "description": "Date of the event (YYYY-MM-DD)" },
+        "description": { "type": "string", "description": "Description of the event" },
+        "fileId": { "type": "string", "description": "ID of the file where this event was found" },
+        "ownerId": { "type": "string", "description": "UID of the user who owns this event" }
+      },
+      "required": ["date", "description", "fileId", "ownerId"]
+    }
+  },
+  "firestore": {
+    "files/{fileId}": {
+      "schema": "File",
+      "description": "Collection of indexed files"
+    },
+    "entities/{entityId}": {
+      "schema": "Entity",
+      "description": "Collection of extracted entities"
+    },
+    "events/{eventId}": {
+      "schema": "Event",
+      "description": "Collection of extracted timeline events"
+    }
+  }
+}

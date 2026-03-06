@@ -1,0 +1,114 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isDocOwner() {
+      return isAuthenticated() && (resource == null || resource.data.ownerId == request.auth.uid);
+    }
+
+    function uidUnchanged() {
+      return !('ownerId' in request.resource.data) || request.resource.data.ownerId == request.auth.uid;
+    }
+    
+    function uidNotModified() {
+      return !('ownerId' in request.resource.data) || request.resource.data.ownerId == resource.data.ownerId;
+    }
+
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+    
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    function isValidString(text, min, max) {
+      return text is string && text.size() >= min && text.size() <= max;
+    }
+    
+    function isValidOptionalString(field, min, max) {
+      return !(field in request.resource.data) || (request.resource.data[field] is string && request.resource.data[field].size() >= min && request.resource.data[field].size() <= max);
+    }
+
+    function isValidTimestamp(ts) {
+      return ts is timestamp; // or string if storing as ISO string, but timestamp preferred
+    }
+    
+    function isValidDateString(dateStr) {
+      return dateStr is string && dateStr.matches("^\\d{4}-\\d{2}-\\d{2}$");
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+
+    function isValidFile(data) {
+      return hasRequiredFields(['name', 'mimeType', 'ownerId', 'createdAt']) &&
+             hasOnlyAllowedFields(['name', 'mimeType', 'webViewLink', 'thumbnailLink', 'processed', 'summary', 'ownerId', 'createdAt']) &&
+             isValidString(data.name, 1, 255) &&
+             isValidString(data.mimeType, 1, 100) &&
+             isValidOptionalString('webViewLink', 0, 2048) &&
+             isValidOptionalString('thumbnailLink', 0, 2048) &&
+             (!('processed' in data) || data.processed is bool) &&
+             isValidOptionalString('summary', 0, 10000) &&
+             data.ownerId == request.auth.uid &&
+             (data.createdAt is string || data.createdAt is timestamp); // Allow string for flexibility with JSON serialization
+    }
+
+    function isValidEntity(data) {
+      return hasRequiredFields(['name', 'type', 'fileId', 'ownerId']) &&
+             hasOnlyAllowedFields(['name', 'type', 'fileId', 'ownerId']) &&
+             isValidString(data.name, 1, 255) &&
+             (data.type in ['PERSON', 'ORGANIZATION', 'LOCATION']) &&
+             isValidString(data.fileId, 1, 100) &&
+             data.ownerId == request.auth.uid;
+    }
+
+    function isValidEvent(data) {
+      return hasRequiredFields(['date', 'description', 'fileId', 'ownerId']) &&
+             hasOnlyAllowedFields(['date', 'description', 'fileId', 'ownerId']) &&
+             isValidDateString(data.date) &&
+             isValidString(data.description, 1, 1000) &&
+             isValidString(data.fileId, 1, 100) &&
+             data.ownerId == request.auth.uid;
+    }
+
+    // ===============================================================
+    // Collection Rules
+    // ===============================================================
+
+    match /files/{fileId} {
+      allow read: if isDocOwner();
+      allow create: if isAuthenticated() && isValidFile(request.resource.data) && uidUnchanged();
+      allow update: if isDocOwner() && isValidFile(request.resource.data) && uidNotModified();
+      allow delete: if isDocOwner();
+    }
+
+    match /entities/{entityId} {
+      allow read: if isDocOwner();
+      allow create: if isAuthenticated() && isValidEntity(request.resource.data) && uidUnchanged();
+      allow update: if isDocOwner() && isValidEntity(request.resource.data) && uidNotModified();
+      allow delete: if isDocOwner();
+    }
+
+    match /events/{eventId} {
+      allow read: if isDocOwner();
+      allow create: if isAuthenticated() && isValidEvent(request.resource.data) && uidUnchanged();
+      allow update: if isDocOwner() && isValidEvent(request.resource.data) && uidNotModified();
+      allow delete: if isDocOwner();
+    }
+  }
+}

@@ -1,0 +1,5 @@
+{
+  "name": "Legal Discovery AI",
+  "description": "A comprehensive legal discovery platform for analyzing, organizing, and visualizing case evidence from Google Drive. Features AI-powered OCR, entity extraction, interactive timelines, and knowledge graph generation.",
+  "requestFramePermissions": []
+}
